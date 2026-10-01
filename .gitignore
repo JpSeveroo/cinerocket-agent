@@ -1,0 +1,67 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets (CRÍTICO: nunca comitar sua chave da OpenRouter)
+.env
+.env.*
+!.env.example
+secrets.json
+
+# Database files
+# O arquivo cinerocket.db é fornecido à parte via Drive e pode ser pesado para versionar no Git
+*.db
+*.sqlite
+*.sqlite3
+cinerocket.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Logs & Cache
+*.log
+logs/
+.cache
+.pytest_cache/
+.ruff_cache/
+
+# IDE / Editor configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
