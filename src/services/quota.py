@@ -1,0 +1,145 @@
+import json
+import os
+import threading
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+
+try:
+    from src.config import CACHE_DIR
+except ImportError:
+    CACHE_DIR = Path(".cache")
+
+LIMITE_DIARIO_PADRAO: int = 50
+NOME_ARQUIVO_COTA: str = "cota.json"
+
+_trava_cota = threading.Lock()
+
+
+@dataclass
+class StatusCota:
+    disponivel: bool
+    usadas: int
+    limite: int
+    restantes: int
+    data_utc: str
+    mensagem_interface: str
+
+
+def _obter_data_utc_atual() -> str:
+    """Retorna a data atual no fuso UTC no formato AAAA-MM-DD."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+class GerenciadorCota:
+    def __init__(self, diretorio_cache: Path = CACHE_DIR, limite_diario: int = LIMITE_DIARIO_PADRAO):
+        self.diretorio_cache = Path(diretorio_cache)
+        self.caminho_arquivo = self.diretorio_cache / NOME_ARQUIVO_COTA
+        self.limite_diario = limite_diario
+
+    def _carregar_estado(self) -> tuple[str, int]:
+        """
+        Lê os dados do arquivo de cota.
+        Se o arquivo não existir ou o dia UTC virar, inicia com 0.
+        """
+        hoje_utc = _obter_data_utc_atual()
+
+        if not self.caminho_arquivo.exists():
+            return hoje_utc, 0
+
+        try:
+            with open(self.caminho_arquivo, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+                data_registrada = dados.get("data_utc", hoje_utc)
+                usadas = int(dados.get("requisicoes_usadas", 0))
+
+                # Virada do dia em UTC (21:00 BRT)
+                if data_registrada != hoje_utc:
+                    return hoje_utc, 0
+
+                return data_registrada, max(0, usadas)
+        except (json.JSONDecodeError, ValueError, OSError):
+            # Recuperação silenciosa se o arquivo estiver corrompido
+            return hoje_utc, 0
+
+    def _salvar_estado_atomico(self, data_utc: str, usadas: int) -> None:
+        """Cria o diretório se não existir e persiste de forma atômica."""
+        self.diretorio_cache.mkdir(parents=True, exist_ok=True)
+        caminho_tmp = self.caminho_arquivo.with_suffix(".tmp")
+
+        conteudo = {
+            "data_utc": data_utc,
+            "requisicoes_usadas": usadas,
+        }
+
+        with open(caminho_tmp, "w", encoding="utf-8") as f:
+            json.dump(conteudo, f, ensure_ascii=False, indent=2)
+
+        os.replace(caminho_tmp, self.caminho_arquivo)
+
+    def consultar_status(self) -> StatusCota:
+        """
+        Inspeciona o saldo diário sem gastar cota (Nó 3).
+        Apresenta os horários no fuso local (21:00 BRT = 00:00 UTC).
+        """
+        with _trava_cota:
+            data_utc, usadas = self._carregar_estado()
+
+        restantes = max(0, self.limite_diario - usadas)
+        disponivel = usadas < self.limite_diario
+
+        if disponivel:
+            mensagem = (
+                f"Cota diária: {usadas}/{self.limite_diario}. "
+                f"Reinicia hoje às 21:00 (Horário de Brasília)."
+            )
+        else:
+            mensagem = (
+                f"Limite diário de {self.limite_diario} consultas gratuitas atingido. "
+                f"A cota reinicia hoje às 21:00 (Horário de Brasília)."
+            )
+
+        return StatusCota(
+            disponivel=disponivel,
+            usadas=usadas,
+            limite=self.limite_diario,
+            restantes=restantes,
+            data_utc=data_utc,
+            mensagem_interface=mensagem,
+        )
+
+    def verificar_cota_disponivel(self) -> bool:
+        """Retorna True se ainda houver cota para o dia atual."""
+        return self.consultar_status().disponivel
+
+    def incrementar(self) -> StatusCota:
+        with _trava_cota:
+            data_utc, usadas = self._carregar_estado()
+            novas_usadas = usadas + 1
+            self._salvar_estado_atomico(data_utc, novas_usadas)
+            return self._montar_status(data_utc, novas_usadas)
+
+    def resetar(self) -> None:
+        """Zera o contador manualmente para testes."""
+        with _trava_cota:
+            hoje_utc = _obter_data_utc_atual()
+            self._salvar_estado_atomico(hoje_utc, 0)
+
+
+# Instância padrão do serviço
+_gerenciador_cota = GerenciadorCota()
+
+
+def verificar_cota_disponivel() -> bool:
+    """Interface direta para checagem rápida no Nó 3."""
+    return _gerenciador_cota.verificar_cota_disponivel()
+
+
+def consultar_status_cota() -> StatusCota:
+    """Interface para exibir métricas na barra lateral do Streamlit."""
+    return _gerenciador_cota.consultar_status()
+
+
+def incrementar_cota() -> StatusCota:
+    """Interface do Nó 5 para debitar requisição bem-sucedida."""
+    return _gerenciador_cota.incrementar()
