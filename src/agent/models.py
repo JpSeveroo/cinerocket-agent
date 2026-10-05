@@ -9,7 +9,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 from src.config import DATABASE_PATH, MAX_LINHAS_RESULTADO
+
+
+class RespostaAgente(BaseModel):
+    """Contrato de saída final estruturado para o pipeline."""
+
+    texto: str
+    sql: str | None = None
 
 
 @dataclass
