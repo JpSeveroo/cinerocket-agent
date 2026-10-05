@@ -46,6 +46,8 @@ secrets.json
 *.sqlite
 *.sqlite3
 cinerocket.db
+*.db-wal
+*.db-shm
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints
@@ -65,3 +67,8 @@ logs/
 *.swo
 .DS_Store
 Thumbs.db
+
+.cache/
+.ruff_cache/
+.pytest_cache/
+*.tmp

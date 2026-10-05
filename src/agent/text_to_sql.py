@@ -11,6 +11,7 @@ import sqlite3
 from typing import Any
 
 from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider
@@ -161,20 +162,31 @@ async def responder_pergunta(
     Returns:
         Instância de RespostaAgente com o texto de resposta e a consulta SQL executada.
     """
-    limites = UsageLimits(request_limit=MAX_REQUESTS_POR_PERGUNTA)
+    limites = UsageLimits(request_limit=8)
 
-    if modelo is not None:
-        resultado = await agente.run(
-            pergunta,
-            deps=contexto,
-            usage_limits=limites,
-            model=modelo,
-        )
-    else:
-        resultado = await agente.run(
-            pergunta,
-            deps=contexto,
-            usage_limits=limites,
+    try:
+        if modelo is not None:
+            resultado = await agente.run(
+                pergunta,
+                deps=contexto,
+                usage_limits=limites,
+                model=modelo,
+            )
+        else:
+            resultado = await agente.run(
+                pergunta,
+                deps=contexto,
+                usage_limits=limites,
+            )
+    except UsageLimitExceeded:
+        return RespostaAgente(
+            texto=(
+                "A complexidade desta análise ultrapassou o limite máximo de etapas "
+                "permitidas por consulta (8 passos). Para obter os dados, tente fazer "
+                "uma pergunta mais direta ou especificar filtros mais pontuais."
+            ),
+            sql=contexto.ultimo_sql_executado,
+            qtd_requests=8,
         )
 
     if contexto.tem_resultado and len(contexto.linhas_resultado or []) == 0:
@@ -184,4 +196,10 @@ async def responder_pergunta(
         texto = resultado.output
         sql = contexto.ultimo_sql_executado
 
-    return RespostaAgente(texto=texto, sql=sql)
+    # Extração resiliente da quantidade de requisições HTTP efetuadas pelo agente
+    qtd_requests = 1
+    if hasattr(resultado, "usage"):
+        u = resultado.usage() if callable(resultado.usage) else resultado.usage
+        qtd_requests = getattr(u, "requests", 1) or 1
+
+    return RespostaAgente(texto=texto, sql=sql, qtd_requests=qtd_requests)

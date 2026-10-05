@@ -104,8 +104,8 @@ async def test_pipeline_executa_com_sucesso_ponta_a_ponta(
     # Nó 5: Deve ter gerado gráfico de barras
     assert isinstance(resultado.grafico, go.Figure)
 
-    # Nó 3: Deve ter consumido 1 requisição da cota
-    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 1
+    # Nó 3: Deve ter consumido as requisições reais da cota (2 requests: tool call + síntese)
+    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 2
 
     # Nó 6: Memória e cache devem estar povoados
     historico = ambiente_pipeline.memoria.obter_historico()
@@ -133,7 +133,7 @@ async def test_pipeline_cache_hit_evita_consumo_de_cota_e_agente(
     # Primeira execução: miss no cache, consulta executada
     res1 = await ambiente_pipeline.executar(pergunta)
     assert res1.do_cache is False
-    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 1
+    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 2
 
     # Segunda execução (com variações de caixa e espaços): hit no cache!
     pergunta_variacao = "  mostre 3 filmes?!  "
@@ -143,8 +143,8 @@ async def test_pipeline_cache_hit_evita_consumo_de_cota_e_agente(
     assert res2.erro is False
     assert res2.texto == res1.texto
     assert res2.sql == sql
-    # A cota permanece em 1 (não consumiu tokens nem requisição de cota)
-    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 1
+    # A cota permanece em 2 (não consumiu tokens nem requisição de cota)
+    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 2
 
     # Memória da sessão deve registrar os dois turnos
     assert len(ambiente_pipeline.memoria.obter_historico()) == 2
@@ -213,3 +213,56 @@ async def test_pipeline_consulta_sem_registros_retorna_template_estatico(
     )
     assert resultado.sql == sql_vazio
     assert resultado.grafico is None
+
+
+@pytest.mark.anyio
+async def test_pipeline_erro_generico_no_no_4_retorna_mensagem_amigavel(
+    ambiente_pipeline: PipelineCineData,
+) -> None:
+    """Garante que falhas genéricas do agente retornem mensagem amigável sem expor stacktraces."""
+    from unittest.mock import patch
+
+    with patch("src.pipeline.responder_pergunta", side_effect=RuntimeError("Connection timeout 500")):
+        resultado = await ambiente_pipeline.executar("Qualquer pergunta válida")
+
+    assert resultado.erro is True
+    assert "Não foi possível concluir a análise devido a uma instabilidade temporária" in resultado.texto
+    assert "Connection timeout" not in resultado.texto
+
+
+@pytest.mark.anyio
+async def test_pipeline_erro_429_forca_esgotamento_de_cota(
+    ambiente_pipeline: PipelineCineData,
+) -> None:
+    """Garante que erro HTTP 429 force o esgotamento da cota e retorne mensagem específica."""
+    from unittest.mock import patch
+
+    with patch("src.pipeline.responder_pergunta", side_effect=RuntimeError("HTTP 429: Rate limit exceeded")):
+        resultado = await ambiente_pipeline.executar("Top 10 filmes mais lucrativos")
+
+    assert resultado.erro is True
+    assert "esgotado no provedor OpenRouter" in resultado.texto
+    status = ambiente_pipeline.gerenciador_cota.consultar_status()
+    assert status.usadas == ambiente_pipeline.gerenciador_cota.limite_diario
+    assert status.disponivel is False
+
+
+@pytest.mark.anyio
+async def test_pipeline_registra_quantidade_real_de_requests(
+    ambiente_pipeline: PipelineCineData,
+) -> None:
+    """Valida que múltiplas requisições HTTP retornadas pelo agente são debitadas da cota."""
+    from unittest.mock import patch
+    from src.agent.models import RespostaAgente
+
+    resposta_mock = RespostaAgente(
+        texto="Resposta com 3 requests internos",
+        sql="SELECT 1",
+        qtd_requests=3,
+    )
+
+    with patch("src.pipeline.responder_pergunta", return_value=resposta_mock):
+        resultado = await ambiente_pipeline.executar("Pergunta qualquer")
+
+    assert resultado.erro is False
+    assert ambiente_pipeline.gerenciador_cota.consultar_status().usadas == 3

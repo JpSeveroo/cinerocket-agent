@@ -13,10 +13,14 @@ class RejectionReason(str, Enum):
 # Padrões estruturais de injeção e comandos diretos
 # Não bloqueia termos isolados para permitir títulos legítimos (ex: "Drop Zone")
 PADROES_BLOQUEIO = [
-    # Subversão de instruções do modelo
-    r"ignore\s+(all\s+)?(previous|the)\s+instructions",
-    r"esque(ça|ce)\s+(as|todas\s+as)?\s*(instruções|regras)",
+    # Subversão de instruções do modelo (inglês e português)
+    r"ignore\s+(all\s+)?(previous\s+|the\s+)?(instructions|rules)",
+    r"ignore\s+(todas\s+as|as)?\s*(regras|instruções|instrucoes)",
+    r"esque(ça|ce)\s+(as|todas\s+as)?\s*(instruções|instrucoes|regras)",
     r"\b(system\s*prompt|developer\s*mode|dan\s*mode)\b",
+    # Tentativas de jailbreak de persona / terminal
+    r"voc[eê]\s+agora\s+[eé]\s+(o|um)?\s*terminal",
+    r"terminal\s+bash",
     # Comandos SQL isolados iniciando a entrada
     r"^\s*(drop\s+table|delete\s+from|truncate\s+table|insert\s+into|update\s+\w+\s+set)\b",
     # Encadeamento malicioso com ponto e vírgula

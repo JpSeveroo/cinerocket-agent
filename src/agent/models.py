@@ -19,6 +19,7 @@ class RespostaAgente(BaseModel):
 
     texto: str
     sql: str | None = None
+    qtd_requests: int = 1
 
 
 @dataclass

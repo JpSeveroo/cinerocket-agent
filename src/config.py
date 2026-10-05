@@ -24,7 +24,7 @@ MODELOS_OPENROUTER = [
 CACHE_VERSION = "v1"
 LIMITE_COTA_DIARIA = 50
 MAX_RETRIES_SQL = 1
-MAX_REQUESTS_POR_PERGUNTA = 4   # Teto de segurança do agent
+MAX_REQUESTS_POR_PERGUNTA = 8   # Teto de segurança do agent (8 passos)
 MAX_LINHAS_RESULTADO = 100      # Limite padrão de retorno das queries
 
 MSG_SEM_MODELOS = (

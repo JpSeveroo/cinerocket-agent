@@ -115,13 +115,25 @@ class GerenciadorCota:
         """Retorna True se ainda houver cota para o dia atual."""
         return self.consultar_status().disponivel
 
-    def incrementar(self) -> StatusCota:
+    def registrar_requisicao(self, quantidade: int = 1) -> StatusCota:
+        """Registra a quantidade real de requisições HTTP efetuadas no turno."""
+        qtd = max(1, int(quantidade))
         with _trava_cota:
             data_utc, usadas = self._carregar_estado()
-            novas_usadas = usadas + 1
+            novas_usadas = usadas + qtd
             self._salvar_estado_atomico(data_utc, novas_usadas)
             return self._montar_status(data_utc, novas_usadas)
 
+    def incrementar(self) -> StatusCota:
+        """Incrementa em 1 o contador de requisições usadas."""
+        return self.registrar_requisicao(1)
+
+    def forcar_esgotamento(self) -> StatusCota:
+        """Trava o contador de cota diária no limite máximo após detecção de HTTP 429."""
+        with _trava_cota:
+            data_utc, _ = self._carregar_estado()
+            self._salvar_estado_atomico(data_utc, self.limite_diario)
+            return self._montar_status(data_utc, self.limite_diario)
 
     def resetar(self) -> None:
         """Zera o contador manualmente para testes."""
@@ -145,5 +157,15 @@ def consultar_status_cota() -> StatusCota:
 
 
 def incrementar_cota() -> StatusCota:
-    """Interface do Nó 5 para debitar requisição bem-sucedida."""
+    """Interface para debitar requisição bem-sucedida."""
     return _gerenciador_cota.incrementar()
+
+
+def registrar_requisicao_cota(quantidade: int = 1) -> StatusCota:
+    """Interface para registrar quantidade específica de requisições."""
+    return _gerenciador_cota.registrar_requisicao(quantidade)
+
+
+def forcar_esgotamento_cota() -> StatusCota:
+    """Interface para forçar esgotamento imediato da cota após erro 429."""
+    return _gerenciador_cota.forcar_esgotamento()

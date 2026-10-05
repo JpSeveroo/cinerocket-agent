@@ -10,6 +10,7 @@ Conecta de ponta a ponta todos os componentes do sistema:
 """
 
 from pathlib import Path
+import traceback
 from typing import Any
 
 from pydantic import BaseModel
@@ -147,11 +148,47 @@ class PipelineCineData:
                 contexto=contexto,
                 modelo=self.modelo,
             )
-            # Debita 1 requisição da cota diária apenas após chamada do modelo
-            self.gerenciador_cota.incrementar()
+            # Debita a quantidade real de requisições HTTP da cota diária
+            qtd_requests = getattr(resposta_agente, "qtd_requests", 1)
+            if hasattr(resposta_agente, "usage"):
+                u = resposta_agente.usage() if callable(resposta_agente.usage) else resposta_agente.usage
+                qtd_requests = getattr(u, "requests", qtd_requests) or qtd_requests
+            self.gerenciador_cota.registrar_requisicao(quantidade=qtd_requests)
         except Exception as e:
+            print("\n" + "=" * 60)
+            print(f"[ERRO NO PIPELINE]: {type(e).__name__} - {e}")
+            traceback.print_exc()
+            print("=" * 60 + "\n")
+
+            # Identificação de erro 429 / Rate Limit
+            erro_str = str(e).lower()
+            eh_429 = "429" in erro_str or "rate limit" in erro_str
+            if not eh_429 and hasattr(e, "exceptions"):
+                for sub_e in getattr(e, "exceptions", []):
+                    sub_str = str(sub_e).lower()
+                    if "429" in sub_str or "rate limit" in sub_str:
+                        eh_429 = True
+                        break
+
+            if eh_429:
+                self.gerenciador_cota.forcar_esgotamento()  # trava o contador local no limite máximo
+                return ResultadoPipeline(
+                    texto=(
+                        "O limite diário de requisições gratuitas da API (50 chamadas HTTP) foi "
+                        "esgotado no provedor OpenRouter. Aguarde a renovação diária da cota "
+                        "ou atualize a chave OPENROUTER_API_KEY no arquivo .env para continuar."
+                    ),
+                    sql=None,
+                    grafico=None,
+                    do_cache=False,
+                    erro=True,
+                )
+
             return ResultadoPipeline(
-                texto=f"Ocorreu um erro ao processar sua pergunta: {e}",
+                texto=(
+                    "Não foi possível concluir a análise devido a uma instabilidade temporária "
+                    "no serviço de inteligência. Por favor, tente novamente em alguns instantes."
+                ),
                 sql=contexto.ultimo_sql_executado,
                 grafico=None,
                 do_cache=False,

@@ -282,3 +282,24 @@ def test_obter_modelo_openrouter_lista_vazia_lanca_erro() -> None:
     """Verifica que lista vazia de modelos lança ValueError."""
     with pytest.raises(ValueError):
         obter_modelo_openrouter(modelos=[])
+
+
+@pytest.mark.anyio
+async def test_responder_pergunta_captura_usage_limit_exceeded() -> None:
+    """Garante que UsageLimitExceeded é capturado e retorna mensagem amigável em português."""
+    from unittest.mock import patch
+    from pydantic_ai.exceptions import UsageLimitExceeded
+
+    contexto = ContextoAgente(caminho_banco=DATABASE_PATH)
+    contexto.ultimo_sql_executado = "SELECT * FROM dim_movies"
+
+    with patch.object(agente, "run", side_effect=UsageLimitExceeded("Test limit")):
+        resposta = await responder_pergunta(
+            pergunta="Análise complexa",
+            contexto=contexto,
+        )
+
+    assert isinstance(resposta, RespostaAgente)
+    assert "ultrapassou o limite máximo de etapas" in resposta.texto
+    assert "8 passos" in resposta.texto
+    assert resposta.sql == "SELECT * FROM dim_movies"

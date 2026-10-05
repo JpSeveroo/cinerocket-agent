@@ -73,3 +73,24 @@ def test_recuperacao_graciosa_arquivo_corrompido(gerenciador_temporario, tmp_pat
     status = gerenciador_temporario.consultar_status()
     assert status.disponivel is True
     assert status.usadas == 0
+
+
+def test_registrar_requisicao_multiplas_chamadas(gerenciador_temporario, tmp_path):
+    """Verifica que registrar_requisicao incrementa pela quantidade indicada."""
+    status = gerenciador_temporario.registrar_requisicao(quantidade=3)
+    assert status.usadas == 3
+    assert status.restantes == 0
+    assert status.disponivel is False
+
+
+def test_forcar_esgotamento(gerenciador_temporario, tmp_path):
+    """Verifica que forcar_esgotamento trava no limite e persiste no disco."""
+    status = gerenciador_temporario.forcar_esgotamento()
+    assert status.usadas == 3
+    assert status.restantes == 0
+    assert status.disponivel is False
+
+    caminho_arquivo = tmp_path / NOME_ARQUIVO_COTA
+    with open(caminho_arquivo, "r", encoding="utf-8") as f:
+        dados = json.load(f)
+        assert dados["requisicoes_usadas"] == 3
