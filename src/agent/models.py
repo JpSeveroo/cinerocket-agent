@@ -26,8 +26,8 @@ class TurnoMemoria:
     """Um turno da janela deslizante de memória (o histórico guarda os últimos N)."""
 
     pergunta: str
-    sql: str
-    resumo: str
+    sql: str | None = None
+    resumo: str = ""
 
 
 @dataclass
