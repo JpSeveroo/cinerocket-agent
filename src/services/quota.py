@@ -5,12 +5,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-try:
-    from src.config import CACHE_DIR
-except ImportError:
-    CACHE_DIR = Path(".cache")
+from src.config import CACHE_DIR, LIMITE_COTA_DIARIA
 
-LIMITE_DIARIO_PADRAO: int = 50
+LIMITE_DIARIO_PADRAO: int = LIMITE_COTA_DIARIA
 NOME_ARQUIVO_COTA: str = "cota.json"
 
 _trava_cota = threading.Lock()
@@ -28,7 +25,9 @@ class StatusCota:
 
 def _obter_data_utc_atual() -> str:
     """Retorna a data atual no fuso UTC no formato AAAA-MM-DD."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")  # noqa: UP017
+
+
 
 
 class GerenciadorCota:
@@ -77,14 +76,8 @@ class GerenciadorCota:
 
         os.replace(caminho_tmp, self.caminho_arquivo)
 
-    def consultar_status(self) -> StatusCota:
-        """
-        Inspeciona o saldo diário sem gastar cota (Nó 3).
-        Apresenta os horários no fuso local (21:00 BRT = 00:00 UTC).
-        """
-        with _trava_cota:
-            data_utc, usadas = self._carregar_estado()
-
+    def _montar_status(self, data_utc: str, usadas: int) -> StatusCota:
+        """Monta o objeto StatusCota formatado com mensagens em português."""
         restantes = max(0, self.limite_diario - usadas)
         disponivel = usadas < self.limite_diario
 
@@ -108,6 +101,16 @@ class GerenciadorCota:
             mensagem_interface=mensagem,
         )
 
+    def consultar_status(self) -> StatusCota:
+        """
+        Inspeciona o saldo diário sem gastar cota (Nó 3).
+        Apresenta os horários no fuso local (21:00 BRT = 00:00 UTC).
+        """
+        with _trava_cota:
+            data_utc, usadas = self._carregar_estado()
+
+        return self._montar_status(data_utc, usadas)
+
     def verificar_cota_disponivel(self) -> bool:
         """Retorna True se ainda houver cota para o dia atual."""
         return self.consultar_status().disponivel
@@ -118,6 +121,7 @@ class GerenciadorCota:
             novas_usadas = usadas + 1
             self._salvar_estado_atomico(data_utc, novas_usadas)
             return self._montar_status(data_utc, novas_usadas)
+
 
     def resetar(self) -> None:
         """Zera o contador manualmente para testes."""

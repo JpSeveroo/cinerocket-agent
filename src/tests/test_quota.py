@@ -1,8 +1,9 @@
 import json
-import pytest
-from pathlib import Path
 from unittest.mock import patch
-from src.services.quota import GerenciadorCota, NOME_ARQUIVO_COTA
+
+import pytest
+
+from src.services.quota import NOME_ARQUIVO_COTA, GerenciadorCota
 
 
 @pytest.fixture

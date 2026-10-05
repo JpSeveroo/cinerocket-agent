@@ -1,4 +1,5 @@
 import pytest
+
 from src.guardrails.input_guard import (
     RejectionReason,
     sanitize_text,

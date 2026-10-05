@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class RejectionReason(str, Enum):
@@ -33,8 +32,8 @@ REGEX_BLOQUEIOS = [
 class InputGuardResult:
     is_valid: bool
     sanitized_prompt: str
-    rejection_reason: Optional[RejectionReason] = None
-    error_message: Optional[str] = None
+    rejection_reason: RejectionReason | None = None
+    error_message: str | None = None
 
 
 def sanitize_text(text: str) -> str:
