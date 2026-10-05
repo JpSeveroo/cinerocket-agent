@@ -146,11 +146,12 @@ else:
                     st.markdown(msg["conteudo"])
 
                 if msg.get("grafico") is not None:
-                    st.plotly_chart(
-                        msg["grafico"],
-                        width="stretch",
-                        key=f"grafico_{idx}",
-                    )
+                    with st.expander("Visualizar gráfico analítico", expanded=False):
+                        st.plotly_chart(
+                            msg["grafico"],
+                            key=f"grafico_{idx}",
+                            use_container_width=True,
+                        )
 
                 if msg.get("do_cache"):
                     st.caption("Resposta recuperada do cache local (custo zero)")
