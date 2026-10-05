@@ -318,34 +318,27 @@ O arquivo do banco de dados relacional `cinerocket.db` (bem como seus arquivos t
 ## 4. Guia de Instalação, Configuração e Execução
 
 ### 4.1. Pré-requisitos
-- **Python**: Versão **3.12** ou superior (compatibilidade total validada no Python 3.13).
-- **Gerenciador de Pacotes**: [uv](https://github.com/astral-sh/uv) (altamente recomendado) ou `pip`.
+
+- **Python**: Versão **3.12** ou superior (compatibilidade validada no Python 3.13).
+- **Gerenciador de Pacotes**: `pip` (padrão) ou [uv](https://github.com/astral-sh/uv).
 - **Chave de API**: Chave gratuita da [OpenRouter](https://openrouter.ai/).
 
 ---
 
 ### 4.2. Passo 1: Clonar o Repositório
-Faça o clone do projeto e entre no diretório raiz:
+
+Clone o projeto e acesse o diretório raiz:
 
 ```bash
 git clone https://github.com/JpSeveroo/cinerocket-agent.git
 cd cinerocket-agent
 ```
 
----
-
 ### 4.3. Passo 2: Instalação das Dependências
 
-#### Com o gerenciador uv (Recomendado)
-O projeto utiliza nativamente o [uv](https://github.com/astral-sh/uv), gerenciador de pacotes ultrarrápido em Rust:
+Escolha o fluxo de sua preferência:
 
-```bash
-# Sincroniza o ambiente virtual e instala todas as dependências (incluindo o grupo dev)
-uv sync
-```
-
-#### Alternativa com venv e pip
-Caso prefira utilizar o ecossistema tradicional do Python:
+#### Opção A: Instalação Padrão com venv e pip
 
 ```bash
 # 1. Crie o ambiente virtual
@@ -354,35 +347,44 @@ python -m venv .venv
 # 2. Ative o ambiente virtual
 # No Windows (PowerShell):
 .venv\Scripts\Activate.ps1
+
 # No Linux/macOS:
 source .venv/bin/activate
 
-# 3. Instale as dependências
+# 3. Instale as dependências e ferramentas de teste
 pip install -e .
 pip install pytest ipykernel
 ```
 
----
+#### Opção B: Instalação com uv (Gerenciador Nativo do Projeto)
+
+```bash
+# Sincroniza o ambiente e instala todas as dependências
+uv sync
+```
 
 ### 4.4. Passo 3: Download e Alocação da Base de Dados
 
 > [!IMPORTANT]
-> **Base de Dados (`cinerocket.db`):** Devido ao tamanho da base analítica (~250 MB compactada) e às boas práticas do Git para evitar arquivos binários pesados no histórico, o banco relacional não é versionado diretamente no repositório.
+>
+> **Base de Dados (`cinerocket.db`):** Devido ao tamanho da base relacional (~250 MB compactada) e às boas práticas do Git para evitar binários pesados no histórico, o banco SQLite não é versionado diretamente no repositório.
 
-1. Acesse a aba de **[Releases do Repositório](https://github.com/JpSeveroo/cinerocket-agent/releases/latest)**.
+1. Acesse a aba de [**Releases do Repositório**](https://github.com/JpSeveroo/cinerocket-agent/releases/latest).
+
 2. Na seção de **Assets**, faça o download do arquivo `cinerocket.zip`.
-3. Descompacte o arquivo e garanta que o `cinerocket.db` esteja posicionado na raiz do projeto:
-   ```text
-   cinerocket-agent/
-   ├── cinerocket.db      <-- Arquivo descompactado deve residir aqui
-   ├── src/
-   ├── app.py
-   └── ...
-   ```
 
----
+3. Descompacte o arquivo e garanta que o arquivo resultante se chame **`cinerocket.db`** e esteja posicionado na raiz do projeto:
+
+```text
+cinerocket-agent/
+├── cinerocket.db      <-- Arquivo descompactado deve residir aqui
+├── src/
+├── app.py
+└── ...
+```
 
 ### 4.5. Passo 4: Configuração das Variáveis de Ambiente
+
 Copie o template `.env.example` para `.env` e preencha sua credencial da OpenRouter:
 
 ```bash
@@ -394,40 +396,39 @@ cp .env.example .env
 ```
 
 Edite o arquivo `.env`:
+
 ```ini
 # Chave da API OpenRouter (Tier gratuito)
 OPENROUTER_API_KEY=sk-or-v1-sua-chave-aqui
 ```
 
----
-
 ### 4.6. Passo 5: Execução dos Testes Automatizados
-Antes de inicializar a aplicação, valide a integridade operacional de todos os componentes:
+
+Valide a integridade operacional de todos os componentes:
 
 ```bash
-# Com o uv:
-uv run pytest -v
-
-# Ou diretamente no ambiente ativado:
+# No ambiente ativado (pip):
 pytest -v
+
+# Ou via uv:
+uv run pytest -v
 ```
 
-> **Resultado Esperado**: 98 testes aprovados com 100% de sucesso em aproximadamente 6 segundos.
-
----
+> **Resultado Esperado**: 98 testes aprovados com 100% de sucesso.
 
 ### 4.7. Passo 6: Inicialização da Aplicação Streamlit
+
 Inicie a interface gráfica do CineData Analytics:
 
 ```bash
-# Com o uv:
-uv run streamlit run app.py
-
-# Ou diretamente no ambiente ativado:
+# No ambiente ativado (pip):
 streamlit run app.py
+
+# Ou via uv:
+uv run streamlit run app.py
 ```
 
-A interface abrirá automaticamente no navegador no endereço: `http://localhost:8501`.
+Acesse a interface no navegador em: `http://localhost:8501`.
 
 ---
 
