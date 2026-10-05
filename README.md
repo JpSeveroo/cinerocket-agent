@@ -299,43 +299,35 @@ O arquivo do banco de dados relacional `cinerocket.db` (bem como seus arquivos t
 
 ## 4. Guia de Instalação, Configuração e Execução
 
-### 4.1. Pré-requisitos e Download da Base de Dados
-
+### 4.1. Pré-requisitos
 - **Python**: Versão **3.12** ou superior (compatibilidade total validada no Python 3.13).
+- **Gerenciador de Pacotes**: [uv](https://github.com/astral-sh/uv) (altamente recomendado) ou `pip`.
 - **Chave de API**: Chave gratuita da [OpenRouter](https://openrouter.ai/).
-
-> [!IMPORTANT]
-> **Base de Dados (`cinerocket.db`):** Devido ao tamanho da base analítica (~250 MB compactada) e às boas práticas do Git para evitar arquivos binários pesados no histórico, o banco relacional não é versionado diretamente no repositório.
-
-1. Acesse a aba de **[Releases do Repositório](https://github.com/JpSeveroo/cinerocket-agent/releases/latest)**.
-2. Na seção de **Assets**, faça o download do arquivo `cinerocket.zip`.
-3. Descompacte o arquivo e garanta que o `cinerocket.db` esteja posicionado na raiz do projeto:
-   ```text
-   cinerocket-agent/
-   ├── cinerocket.db      <-- Arquivo descompactado deve residir aqui
-   ├── src/
-   ├── app.py
-   └── ...
-   ```
 
 ---
 
-### 4.2. Instalação com o Gerenciador `uv` (Recomendado)
-O projeto utiliza nativamente o [uv](https://github.com/astral-sh/uv), gerenciador de pacotes ultrarrápido em Rust:
+### 4.2. Passo 1: Clonar o Repositório
+Faça o clone do projeto e entre no diretório raiz:
 
 ```bash
-# 1. Clone o repositório e acesse a pasta
 git clone https://github.com/JpSeveroo/cinerocket-agent.git
 cd cinerocket-agent
-
-# 2. Sincronize o ambiente e instale todas as dependências (incluindo grupo dev)
-uv sync
 ```
 
 ---
 
-### 4.3. Instalação Alternativa com `venv` e `pip`
-Caso prefira o ecossistema tradicional:
+### 4.3. Passo 2: Instalação das Dependências
+
+#### Com o gerenciador uv (Recomendado)
+O projeto utiliza nativamente o [uv](https://github.com/astral-sh/uv), gerenciador de pacotes ultrarrápido em Rust:
+
+```bash
+# Sincroniza o ambiente virtual e instala todas as dependências (incluindo o grupo dev)
+uv sync
+```
+
+#### Alternativa com venv e pip
+Caso prefira utilizar o ecossistema tradicional do Python:
 
 ```bash
 # 1. Crie o ambiente virtual
@@ -354,8 +346,26 @@ pip install pytest ipykernel
 
 ---
 
-### 4.4. Configuração das Variáveis de Ambiente
-Copie o template `.env.example` para `.env` e preencha sua credencial:
+### 4.4. Passo 3: Download e Alocação da Base de Dados
+
+> [!IMPORTANT]
+> **Base de Dados (`cinerocket.db`):** Devido ao tamanho da base analítica (~250 MB compactada) e às boas práticas do Git para evitar arquivos binários pesados no histórico, o banco relacional não é versionado diretamente no repositório.
+
+1. Acesse a aba de **[Releases do Repositório](https://github.com/JpSeveroo/cinerocket-agent/releases/latest)**.
+2. Na seção de **Assets**, faça o download do arquivo `cinerocket.zip`.
+3. Descompacte o arquivo e garanta que o `cinerocket.db` esteja posicionado na raiz do projeto:
+   ```text
+   cinerocket-agent/
+   ├── cinerocket.db      <-- Arquivo descompactado deve residir aqui
+   ├── src/
+   ├── app.py
+   └── ...
+   ```
+
+---
+
+### 4.5. Passo 4: Configuração das Variáveis de Ambiente
+Copie o template `.env.example` para `.env` e preencha sua credencial da OpenRouter:
 
 ```bash
 # No Windows (PowerShell):
@@ -373,8 +383,8 @@ OPENROUTER_API_KEY=sk-or-v1-sua-chave-aqui
 
 ---
 
-### 4.5. Execução dos Testes Automatizados
-Antes de subir o servidor, valide a integridade operacional de todos os componentes:
+### 4.6. Passo 5: Execução dos Testes Automatizados
+Antes de inicializar a aplicação, valide a integridade operacional de todos os componentes:
 
 ```bash
 # Com o uv:
@@ -388,7 +398,7 @@ pytest -v
 
 ---
 
-### 4.6. Inicialização da Aplicação Streamlit
+### 4.7. Passo 6: Inicialização da Aplicação Streamlit
 Inicie a interface gráfica do CineData Analytics:
 
 ```bash
