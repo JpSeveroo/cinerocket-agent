@@ -188,6 +188,19 @@ A segurança e previsibilidade do CineData baseiam-se em uma arquitetura de defe
   - Bloqueio explícito de cláusula `INTO` (`SELECT ... INTO`).
   - Bloqueio rigoroso de *multi-statements* (múltiplas consultas delimitadas por `;`).
 
+#### Nó 5 — Visualização Determinística (`src/services/viz.py`)
+- **Geração 100% Algorítmica (Sem Consumo de LLM)**: A geração visual não é delegada ao modelo de linguagem. Enquanto o agente inteligente responde pela tradução de linguagem natural para SQL e síntese de negócio, o módulo de visualização opera como uma função puramente determinística em Python utilizando Pandas e Plotly.
+- **Separação Estrita de Responsabilidades**: A função `gerar_grafico` inspeciona a forma tabular dos dados brutos retornados pelo SQLite capturados em `ContextoAgente` (sem que esses dados precisem transitar pelo contexto de tokens do LLM):
+  - *Identificação de Semântica Temporal*: Mapeamento de colunas de data/ano (`release_date`, `ano`, `dt`) via regex e coerção temporal segura.
+  - *Identificação de Métricas Numéricas*: Detecção de colunas numéricas contínuas com tratamento de nulos.
+  - *Identificação Categórica*: Mapeamento de dimensões nominais de cardinalidade adequada.
+  - *Seleção Heurística de Gráficos*:
+    - *Categórico + Numérico*: Gráfico de barras (com seleção automática de top 15 em orientação horizontal para preservar a legibilidade em alta cardinalidade).
+    - *Temporal + Numérico*: Gráfico de linhas contínuo com agregação prévia de datas duplicadas para eliminar ziguezagues visuais.
+    - *Ao Menos Dois Numéricos*: Gráfico de dispersão para correlações analíticas.
+    - *Dados Escalares ou Unidimensionais*: Retorno seguro de `None`, descartando figuras desnecessárias para contagens isoladas.
+- **Eliminação Total de Alucinação Gráfica**: Por se basear em regras algorítmicas estritas em código, o pipeline erradica alucinações visuais, escalas distorcidas ou falhas de renderização de bibliotecas externas, garantindo **custo zero de tokens de saída**.
+
 ---
 
 ### ADR 04: Resiliência do Frontend em Streamlit (`app.py`)
@@ -206,6 +219,11 @@ Integrar um agente assíncrono com ciclo de vida baseado em PydanticAI à arquit
 
 #### Identificadores Únicos de Componentes
 - Todos os gráficos Plotly no histórico utilizam chaves explicitamente indexadas (`key=f"grafico_{idx}"`), eliminando colisões de `StreamlitDuplicateElementId` à medida que a conversa se estende.
+
+#### Encapsulamento Sob Demanda via Expander
+- **Padrão de UX Adotado**: Gráficos analíticos gerados são apresentados dentro de um bloco retrátil colapsado por padrão (`with st.expander("Visualizar gráfico analítico", expanded=False)`), espelhando o comportamento do bloco *"Ver consulta SQL"*.
+- **Autonomia e Controle do Usuário**: A interface prioriza a resposta textual e tabular direta no fluxo de leitura, concedendo ao usuário a decisão de expandir a projeção visual apenas quando desejar inspeção gráfica mais profunda.
+- **Resolução Elegante de Comandos Negativos**: Evita a necessidade de criar regras frágeis de NLP ou prompts adicionais para interpretar instruções como *"sem gráfico"* ou *"somente texto"*, resolvendo a demanda em nível de interface e garantindo uma conversa sempre limpa e despoluída.
 
 #### Design Minimalista e Limpo
 - A interface segue uma estética minimalista, priorizando tipografia limpa, hierarquia visual, espaçamento refinado e ausência de emojis estruturais.
