@@ -1,12 +1,30 @@
-# CineData Analytics: Agente Text-to-SQL do Catálogo CineRocket
+<div align="center">
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B%20%7C%203.13-blue.svg)](https://www.python.org/)
-[![PydanticAI](https://img.shields.io/badge/agent-PydanticAI%20v2.54%2B-E92063.svg)](https://ai.pydantic.dev/)
-[![Streamlit](https://img.shields.io/badge/frontend-Streamlit%20v1.65%2B-FF4B4B.svg)](https://streamlit.io/)
-[![SQLGlot](https://img.shields.io/badge/guardrails-SQLGlot-green.svg)](https://sqlglot.com/)
-[![UV](https://img.shields.io/badge/package%20manager-UV-blueviolet.svg)](https://github.com/astral-sh/uv)
-[![Testes Automatizados](https://img.shields.io/badge/tests-98%20passed%20%28100%25%29-brightgreen.svg)](src/tests/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+# CineData Analytics 🎬
+
+### Agente Text-to-SQL com Defesa em Profundidade e Otimização Orçamentária
+
+<p align="center">
+  <img src="https://img.shields.io/badge/PYTHON-3.12%20%7C%203.13-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/PYDANTIC_AI-v2.54+-E92063?style=for-the-badge&logo=pydantic&logoColor=white" alt="PydanticAI" />
+  <img src="https://img.shields.io/badge/STREAMLIT-v1.65+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit" />
+  <img src="https://img.shields.io/badge/SQLITE-READ_ONLY-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/SQLGLOT-AST_GUARD-00C7B7?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLGlot" />
+  <img src="https://img.shields.io/badge/UV-PACKAGE_MANAGER-DE5FE9?style=for-the-badge&logo=rust&logoColor=white" alt="UV" />
+  <img src="https://img.shields.io/badge/PLOTLY-DATA_VIZ-3F4F75?style=for-the-badge&logo=plotly&logoColor=white" alt="Plotly" />
+  <img src="https://img.shields.io/badge/PYTEST-98%2F98_PASSED-2EA44F?style=for-the-badge&logo=pytest&logoColor=white" alt="Pytest" />
+  <img src="https://img.shields.io/badge/LICENSE-MIT-7F8C8D?style=for-the-badge" alt="License" />
+</p>
+
+<p align="center">
+  <i>Pipeline Text-to-SQL determinístico com 6 nós defensivos, cache léxico a custo zero e interface reativa para consultas analíticas sobre o catálogo CineRocket.</i>
+</p>
+
+---
+
+</div>
 
 O **CineData Analytics** é um agente analítico autônomo baseado no padrão **Text-to-SQL**, projetado para traduzir perguntas complexas de negócio em consultas precisas e seguras sobre o banco relacional do catálogo **CineRocket**.
 
@@ -281,10 +299,24 @@ O arquivo do banco de dados relacional `cinerocket.db` (bem como seus arquivos t
 
 ## 4. Guia de Instalação, Configuração e Execução
 
-### 4.1. Pré-requisitos
+### 4.1. Pré-requisitos e Download da Base de Dados
+
 - **Python**: Versão **3.12** ou superior (compatibilidade total validada no Python 3.13).
-- **Banco de Dados**: Arquivo `cinerocket.db` posicionado na raiz do projeto.
 - **Chave de API**: Chave gratuita da [OpenRouter](https://openrouter.ai/).
+
+> [!IMPORTANT]
+> **Base de Dados (`cinerocket.db`):** Devido ao tamanho da base analítica (~250 MB compactada) e às boas práticas do Git para evitar arquivos binários pesados no histórico, o banco relacional não é versionado diretamente no repositório.
+
+1. Acesse a aba de **[Releases do Repositório](https://github.com/JpSeveroo/cinerocket-agent/releases/latest)**.
+2. Na seção de **Assets**, faça o download do arquivo `cinerocket.zip`.
+3. Descompacte o arquivo e garanta que o `cinerocket.db` esteja posicionado na raiz do projeto:
+   ```text
+   cinerocket-agent/
+   ├── cinerocket.db      <-- Arquivo descompactado deve residir aqui
+   ├── src/
+   ├── app.py
+   └── ...
+   ```
 
 ---
 
