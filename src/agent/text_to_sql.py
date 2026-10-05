@@ -1,12 +1,6 @@
-"""Módulo do Agente Text-to-SQL (Nó 4.1 do Pipeline CineData).
-
-Orquestra o PydanticAI para transformar perguntas do usuário em linguagem natural
-em consultas SQL somente leitura sobre o catálogo CineRocket, capturando resultados
-completos no contexto de dependências e retornando respostas em texto puro.
-"""
+"""Módulo do agente Text-to-SQL baseado em PydanticAI."""
 
 import json
-import os
 import sqlite3
 from typing import Any
 
@@ -29,7 +23,6 @@ from src.database.connection import get_readonly_connection
 from src.database.schema import get_database_schema
 from src.guardrails.sql_guard import validar_query_segura
 
-# Quantidade máxima de linhas enviada na amostra para o LLM não estourar tokens
 LIMITE_AMOSTRA_LLM = 15
 
 
@@ -37,7 +30,15 @@ def obter_modelo_openrouter(
     modelos: list[str] | None = None,
     api_key: str | None = None,
 ) -> FallbackModel | OpenAIChatModel:
-    """Configura os modelos OpenRouter encapsulados em FallbackModel."""
+    """Configura provedor e modelos OpenRouter com suporte a fallback.
+
+    Args:
+        modelos: Lista de identificadores de modelos.
+        api_key: Chave da API OpenRouter.
+
+    Returns:
+        Instância de modelo OpenAI ou FallbackModel para o PydanticAI.
+    """
     lista = modelos if modelos is not None else MODELOS_OPENROUTER
     if not lista:
         raise ValueError("Nenhum modelo OpenRouter configurado.")
@@ -52,7 +53,6 @@ def obter_modelo_openrouter(
     return FallbackModel(modelos_chat[0], *modelos_chat[1:])
 
 
-# Instância principal do agente configurada com o ContextoAgente e saída em texto puro
 agente: Agent[ContextoAgente, str] = Agent(
     model=obter_modelo_openrouter(),
     deps_type=ContextoAgente,
@@ -64,7 +64,7 @@ agente: Agent[ContextoAgente, str] = Agent(
 
 @agente.system_prompt
 def injetar_system_prompt(ctx: RunContext[ContextoAgente]) -> str:
-    """Injeta dinamicamente o System Prompt com instruções, esquema DDL e histórico recente."""
+    """Injeta dinamicamente o System Prompt com instruções, schema e histórico recente."""
     schema_ddl = get_database_schema(ctx.deps.caminho_banco)
     return montar_system_prompt(schema_ddl, ctx.deps.historico)
 
@@ -73,10 +73,6 @@ def injetar_system_prompt(ctx: RunContext[ContextoAgente]) -> str:
 def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
     """Executa uma consulta SQL somente leitura (SELECT) no banco de dados SQLite do CineRocket.
 
-    Use esta ferramenta sempre que precisar consultar tabelas, métricas, bilheterias,
-    elencos ou avaliações do catálogo. O retorno é uma amostra compacta dos dados para
-    sua formulação de resposta. O resultado completo é gravado no contexto para gráficos.
-
     Args:
         ctx: Contexto da execução com dependências do agente e armazenamento de resultados.
         sql: Comando SQL SELECT a ser executado no SQLite.
@@ -84,7 +80,6 @@ def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
     Returns:
         String em formato JSON com colunas, total de linhas e amostra dos registros.
     """
-    # 1. Validação de segurança (somente leitura / sem mutações)
     try:
         validar_query_segura(sql)
     except ValueError as erro_guard:
@@ -94,7 +89,6 @@ def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
             f"Consulta SQL não permitida: {msg}. Gere exclusivamente consultas SELECT válidas."
         ) from erro_guard
 
-    # 2. Execução no SQLite em modo estritamente somente leitura
     conn = get_readonly_connection(ctx.deps.caminho_banco)
     try:
         cursor = conn.cursor()
@@ -102,7 +96,6 @@ def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
         colunas = [desc[0] for desc in cursor.description] if cursor.description else []
         linhas_raw = cursor.fetchmany(ctx.deps.limite_linhas)
 
-        # Trata possíveis valores binários para compatibilidade total com JSON
         linhas: list[list[Any]] = []
         for r in linhas_raw:
             linhas.append([
@@ -110,7 +103,6 @@ def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
                 for v in r
             ])
 
-        # Grava o resultado completo no contexto (para gráficos e cache)
         ctx.deps.registrar_sucesso(sql=sql, colunas=colunas, linhas=linhas)
 
     except sqlite3.Error as erro_sql:
@@ -123,7 +115,6 @@ def executar_sql(ctx: RunContext[ContextoAgente], sql: str) -> str:
     finally:
         conn.close()
 
-    # 3. Formata amostra truncada para retornar ao modelo sem estourar limite de tokens
     total_linhas = len(linhas)
     amostra = linhas[:LIMITE_AMOSTRA_LLM]
 
@@ -149,20 +140,17 @@ async def responder_pergunta(
     contexto: ContextoAgente,
     modelo: Any = None,
 ) -> RespostaAgente:
-    """Ponto de entrada assíncrono para responder perguntas do usuário via Text-to-SQL.
-
-    Limita estritamente o número de requisições por pergunta através do UsageLimits
-    para evitar loops de retry e proteger a cota do usuário.
+    """Executa o agente para responder perguntas em linguagem natural.
 
     Args:
         pergunta: Pergunta do usuário em linguagem natural.
         contexto: ContextoAgente configurado para o turno de conversa.
-        modelo: Modelo alternativo opcional (ex: TestModel nos testes automatizados).
+        modelo: Modelo alternativo opcional para execução.
 
     Returns:
-        Instância de RespostaAgente com o texto de resposta e a consulta SQL executada.
+        Instância de RespostaAgente com texto e consulta SQL executada.
     """
-    limites = UsageLimits(request_limit=8)
+    limites = UsageLimits(request_limit=MAX_REQUESTS_POR_PERGUNTA)
 
     try:
         if modelo is not None:
@@ -186,7 +174,7 @@ async def responder_pergunta(
                 "uma pergunta mais direta ou especificar filtros mais pontuais."
             ),
             sql=contexto.ultimo_sql_executado,
-            qtd_requests=8,
+            qtd_requests=MAX_REQUESTS_POR_PERGUNTA,
         )
 
     if contexto.tem_resultado and len(contexto.linhas_resultado or []) == 0:
@@ -196,7 +184,6 @@ async def responder_pergunta(
         texto = resultado.output
         sql = contexto.ultimo_sql_executado
 
-    # Extração resiliente da quantidade de requisições HTTP efetuadas pelo agente
     qtd_requests = 1
     if hasattr(resultado, "usage"):
         u = resultado.usage() if callable(resultado.usage) else resultado.usage

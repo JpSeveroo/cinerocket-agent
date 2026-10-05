@@ -1,3 +1,5 @@
+"""Serviço de controle de cota diária de requisições."""
+
 import json
 import os
 import threading
@@ -28,19 +30,16 @@ def _obter_data_utc_atual() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")  # noqa: UP017
 
 
-
-
 class GerenciadorCota:
+    """Controla o limite diário de requisições HTTP e persistência do contador."""
+
     def __init__(self, diretorio_cache: Path = CACHE_DIR, limite_diario: int = LIMITE_DIARIO_PADRAO):
         self.diretorio_cache = Path(diretorio_cache)
         self.caminho_arquivo = self.diretorio_cache / NOME_ARQUIVO_COTA
         self.limite_diario = limite_diario
 
     def _carregar_estado(self) -> tuple[str, int]:
-        """
-        Lê os dados do arquivo de cota.
-        Se o arquivo não existir ou o dia UTC virar, inicia com 0.
-        """
+        """Lê os dados do arquivo de cota ou reinicializa se virar o dia UTC."""
         hoje_utc = _obter_data_utc_atual()
 
         if not self.caminho_arquivo.exists():
@@ -52,13 +51,11 @@ class GerenciadorCota:
                 data_registrada = dados.get("data_utc", hoje_utc)
                 usadas = int(dados.get("requisicoes_usadas", 0))
 
-                # Virada do dia em UTC (21:00 BRT)
                 if data_registrada != hoje_utc:
                     return hoje_utc, 0
 
                 return data_registrada, max(0, usadas)
         except (json.JSONDecodeError, ValueError, OSError):
-            # Recuperação silenciosa se o arquivo estiver corrompido
             return hoje_utc, 0
 
     def _salvar_estado_atomico(self, data_utc: str, usadas: int) -> None:
@@ -102,10 +99,7 @@ class GerenciadorCota:
         )
 
     def consultar_status(self) -> StatusCota:
-        """
-        Inspeciona o saldo diário sem gastar cota (Nó 3).
-        Apresenta os horários no fuso local (21:00 BRT = 00:00 UTC).
-        """
+        """Inspeciona o saldo diário sem debitar requisições."""
         with _trava_cota:
             data_utc, usadas = self._carregar_estado()
 
@@ -142,22 +136,21 @@ class GerenciadorCota:
             self._salvar_estado_atomico(hoje_utc, 0)
 
 
-# Instância padrão do serviço
 _gerenciador_cota = GerenciadorCota()
 
 
 def verificar_cota_disponivel() -> bool:
-    """Interface direta para checagem rápida no Nó 3."""
+    """Interface direta para checagem rápida de disponibilidade de cota."""
     return _gerenciador_cota.verificar_cota_disponivel()
 
 
 def consultar_status_cota() -> StatusCota:
-    """Interface para exibir métricas na barra lateral do Streamlit."""
+    """Interface para exibir status na barra lateral do frontend."""
     return _gerenciador_cota.consultar_status()
 
 
 def incrementar_cota() -> StatusCota:
-    """Interface para debitar requisição bem-sucedida."""
+    """Interface para debitar uma requisição."""
     return _gerenciador_cota.incrementar()
 
 

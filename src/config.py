@@ -12,7 +12,6 @@ CACHE_DIR = BASE_DIR / ".cache"
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-# Modelos padrão gratuitos (:free) validados com Tool Calling
 MODELOS_OPENROUTER = [
     "qwen/qwen3.8-27b:free",
     "cohere/north-mini-code:free",
@@ -20,12 +19,11 @@ MODELOS_OPENROUTER = [
     "nvidia/nemotron-3.5-lightning:free",
 ]
 
-# Constantes do fluxo
 CACHE_VERSION = "v1"
 LIMITE_COTA_DIARIA = 50
 MAX_RETRIES_SQL = 1
-MAX_REQUESTS_POR_PERGUNTA = 8   # Teto de segurança do agent (8 passos)
-MAX_LINHAS_RESULTADO = 100      # Limite padrão de retorno das queries
+MAX_REQUESTS_POR_PERGUNTA = 8
+MAX_LINHAS_RESULTADO = 100
 
 MSG_SEM_MODELOS = (
     "Nenhum modelo gratuito respondeu no momento. "

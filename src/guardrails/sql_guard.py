@@ -1,14 +1,12 @@
-"""Guardrail de segurança para consultas SQL (Nó 4.2).
+"""Guardrail de segurança para consultas SQL.
 
 Garante que apenas consultas SELECT ou UNION puras e seguras sejam executadas
-no SQLite, prevenindo injeções, comandos de mutação (INSERT, UPDATE, DELETE, DROP,
-ALTER), comandos administrativos (PRAGMA, ATTACH) e execução de múltiplos statements.
+no SQLite, prevenindo comandos de mutação, administrativos ou múltiplos statements.
 """
 
 import sqlglot
 from sqlglot import exp
 
-# Nós da AST estritamente proibidos em qualquer profundidade da árvore
 NOS_PROIBIDOS = (
     exp.Insert,
     exp.Update,
@@ -29,7 +27,7 @@ def validar_query_segura(sql: str) -> None:
 
     Raises:
         ValueError: Se a consulta for vazia, contiver erros de sintaxe, múltiplas
-            instruções ou qualquer comando diferente de SELECT / UNION.
+            instruções ou comandos de mutação/administração.
     """
     if not sql or not sql.strip():
         raise ValueError("A consulta SQL não pode ser vazia.")
@@ -55,12 +53,10 @@ def validar_query_segura(sql: str) -> None:
             f"Comando SQL não permitido ({tipo_cmd}). Apenas consultas SELECT são permitidas."
         )
 
-    # Varredura profunda na AST para bloquear comandos proibidos aninhados
     if instrucao.find(NOS_PROIBIDOS):
         raise ValueError(
             "Comando de modificação ou instrução administrativa identificada na consulta."
         )
 
-    # Bloqueia cláusulas que poderiam criar tabelas a partir de SELECT (ex: SELECT INTO)
     if instrucao.find(exp.Into):
         raise ValueError("Cláusula INTO não é permitida em consultas somente leitura.")

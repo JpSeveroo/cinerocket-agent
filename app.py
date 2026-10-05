@@ -14,7 +14,7 @@ from src.pipeline import PipelineCineData
 
 
 class AsyncRunner:
-    """Mantém um event loop persistente em uma thread dedicada para evitar fechamento do loop no Streamlit."""
+    """Mantém um event loop persistente em thread dedicada para o Streamlit."""
 
     def __init__(self) -> None:
         self._loop = asyncio.new_event_loop()
@@ -30,27 +30,22 @@ class AsyncRunner:
         return fut.result()
 
 
-# 1. Configuração da Página
 st.set_page_config(page_title="CineData", layout="wide")
 
-# Estilos CSS Minimalistas e Elegantes
 st.markdown(
     """
     <style>
-        /* Ajustes de layout e respiro visual */
         .block-container {
             padding-top: 2rem;
             padding-bottom: 5rem;
             max-width: 900px;
         }
 
-        /* Tipografia limpa */
         h1, h2, h3, h4 {
             font-weight: 600;
             letter-spacing: -0.02em;
         }
 
-        /* Estilização suave dos botões de sugestão */
         .stButton > button {
             border-radius: 8px;
             padding: 0.75rem 1rem;
@@ -68,7 +63,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 2. Inicialização do Session State
 if "_async_runner" not in st.session_state:
     st.session_state._async_runner = AsyncRunner()
 
@@ -93,7 +87,6 @@ if "pergunta_pendente" not in st.session_state:
 
 pipeline: PipelineCineData = st.session_state.pipeline
 
-# 3. Barra Lateral (Sidebar)
 with st.sidebar:
     st.markdown("### CineData")
     st.caption("Text-to-SQL Analytics")
@@ -113,14 +106,11 @@ with st.sidebar:
 
     st.divider()
 
-    # Status de Cota no rodapé discreto da barra lateral
     status_cota = pipeline.gerenciador_cota.consultar_status()
     st.caption(f"Cota diária: {status_cota.usadas} / {status_cota.limite} requisições")
 
-# 4. Área Central de Conversa
 sugestao_clicada: str | None = None
 
-# A. Estado Inicial (Empty State)
 if len(st.session_state.mensagens) == 0:
     st.markdown(
         """
@@ -144,7 +134,6 @@ if len(st.session_state.mensagens) == 0:
         if st.button("Média de avaliação por gênero", width="stretch"):
             sugestao_clicada = "Média de avaliação por gênero"
 
-# B. Histórico de Mensagens
 else:
     for idx, msg in enumerate(st.session_state.mensagens):
         if msg["role"] == "user":
@@ -170,7 +159,6 @@ else:
                     with st.expander("Ver consulta SQL", expanded=False):
                         st.code(msg["sql"], language="sql")
 
-# 5. Captura de Input e Processamento
 esta_ocupado = st.session_state.pergunta_pendente is not None
 
 prompt_input = st.chat_input(
@@ -178,7 +166,6 @@ prompt_input = st.chat_input(
     disabled=esta_ocupado,
 )
 
-# Captura da pergunta vinda do input ou botões
 pergunta_recebida = (
     prompt_input
     or sugestao_clicada
@@ -186,7 +173,6 @@ pergunta_recebida = (
 )
 st.session_state.prompt_sugerido = None
 
-# FASE 1: Recebeu pergunta e o sistema estava livre -> agenda e recarrega a UI
 if pergunta_recebida and not esta_ocupado:
     st.session_state.pergunta_pendente = pergunta_recebida
     st.session_state.mensagens.append(
@@ -201,7 +187,6 @@ if pergunta_recebida and not esta_ocupado:
     )
     st.rerun()
 
-# FASE 2: Há uma pergunta pendente agendada -> UI já renderizou travada, agora processa
 if st.session_state.pergunta_pendente:
     pergunta_atual = st.session_state.pergunta_pendente
     try:

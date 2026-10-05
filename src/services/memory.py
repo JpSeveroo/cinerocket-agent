@@ -1,23 +1,16 @@
 """Serviço de gerenciamento de memória da sessão (Janela deslizante de turnos).
 
-Mantém em memória os últimos N turnos da conversa (pergunta, consulta SQL e resumo
-curto da resposta) para enriquecer o contexto do agente sem estourar o limite de tokens.
+Mantém em memória os últimos N turnos da conversa para contexto do agente.
 """
 
 from src.agent.models import TurnoMemoria
 
-# Tamanho padrão da janela deslizante de histórico
 MAX_TURNOS_PADRAO = 3
-
-# Limite máximo de caracteres para o resumo determinístico
 MAX_CHARS_RESUMO = 150
 
 
 def gerar_resumo_curto(texto: str, max_chars: int = MAX_CHARS_RESUMO) -> str:
     """Extrai um resumo determinístico e compacto do texto de resposta.
-
-    Limpa espaços extras e quebras de linha. Prioriza a primeira frase completa;
-    caso exceda max_chars, trunca respeitando palavras e adiciona reticências.
 
     Args:
         texto: Texto completo da resposta a ser resumida.
@@ -33,13 +26,11 @@ def gerar_resumo_curto(texto: str, max_chars: int = MAX_CHARS_RESUMO) -> str:
     if len(texto_limpo) <= max_chars:
         return texto_limpo
 
-    # Tenta quebrar na primeira frase completa (com mais de 20 caracteres)
     for pontuacao in (". ", "! ", "? "):
         pos = texto_limpo.find(pontuacao)
         if 20 <= pos <= max_chars:
             return texto_limpo[: pos + 1].strip()
 
-    # Trunca preservando palavras completas
     trecho = texto_limpo[:max_chars]
     if " " in trecho:
         trecho = trecho.rsplit(" ", 1)[0]
@@ -77,7 +68,6 @@ class GerenciadorMemoria:
         )
         self.turnos.append(turno)
 
-        # Aplica a janela deslizante, mantendo apenas os últimos N turnos
         if len(self.turnos) > self.max_turnos:
             self.turnos = self.turnos[-self.max_turnos :]
 
@@ -85,7 +75,7 @@ class GerenciadorMemoria:
         """Retorna uma cópia da lista de turnos atualmente armazenados.
 
         Returns:
-            Lista de objetos TurnoMemoria pronta para injeção no ContextoAgente.
+            Lista de objetos TurnoMemoria para injeção no ContextoAgente.
         """
         return list(self.turnos)
 

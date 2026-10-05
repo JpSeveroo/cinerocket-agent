@@ -10,20 +10,14 @@ class RejectionReason(str, Enum):
     INJECTION_DETECTED = "INJECTION_DETECTED"
 
 
-# Padrões estruturais de injeção e comandos diretos
-# Não bloqueia termos isolados para permitir títulos legítimos (ex: "Drop Zone")
 PADROES_BLOQUEIO = [
-    # Subversão de instruções do modelo (inglês e português)
     r"ignore\s+(all\s+)?(previous\s+|the\s+)?(instructions|rules)",
     r"ignore\s+(todas\s+as|as)?\s*(regras|instruções|instrucoes)",
     r"esque(ça|ce)\s+(as|todas\s+as)?\s*(instruções|instrucoes|regras)",
     r"\b(system\s*prompt|developer\s*mode|dan\s*mode)\b",
-    # Tentativas de jailbreak de persona / terminal
     r"voc[eê]\s+agora\s+[eé]\s+(o|um)?\s*terminal",
     r"terminal\s+bash",
-    # Comandos SQL isolados iniciando a entrada
     r"^\s*(drop\s+table|delete\s+from|truncate\s+table|insert\s+into|update\s+\w+\s+set)\b",
-    # Encadeamento malicioso com ponto e vírgula
     r";\s*(drop\s+table|delete\s+from|truncate\s+table|insert\s+into|alter\s+table)\b",
 ]
 
@@ -41,8 +35,13 @@ class InputGuardResult:
 
 
 def sanitize_text(text: str) -> str:
-    """
-    Remove caracteres de controle ASCII invisíveis e normaliza espaçamentos.
+    """Remove caracteres de controle ASCII e normaliza espaçamentos redundantes.
+
+    Args:
+        text: Texto bruto de entrada.
+
+    Returns:
+        String sanitizada sem caracteres de controle.
     """
     texto_limpo = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)
     texto_limpo = re.sub(r"\s+", " ", texto_limpo)
@@ -52,9 +51,15 @@ def sanitize_text(text: str) -> str:
 def validate_user_input(
     raw_prompt: str, min_chars: int = 3, max_chars: int = 500
 ) -> InputGuardResult:
-    """
-    Executa a higienização e validação preliminar (custo zero de tokens).
-    Retorna o status, motivo estruturado de recusa e mensagem explicativa.
+    """Valida comprimento e padrões de segurança na entrada do usuário.
+
+    Args:
+        raw_prompt: Entrada fornecida pelo usuário.
+        min_chars: Comprimento mínimo aceitável.
+        max_chars: Comprimento máximo aceitável.
+
+    Returns:
+        Instância de InputGuardResult com validação e eventuais motivos de recusa.
     """
     if not raw_prompt or not isinstance(raw_prompt, str):
         return InputGuardResult(
@@ -66,7 +71,6 @@ def validate_user_input(
 
     prompt_limpo = sanitize_text(raw_prompt)
 
-    # 1. Validação de tamanho mínimo
     if len(prompt_limpo) < min_chars:
         return InputGuardResult(
             is_valid=False,
@@ -75,7 +79,6 @@ def validate_user_input(
             error_message=f"Pergunta muito curta. Forneça pelo menos {min_chars} caracteres.",
         )
 
-    # 2. Validação de tamanho máximo
     if len(prompt_limpo) > max_chars:
         return InputGuardResult(
             is_valid=False,
@@ -84,7 +87,6 @@ def validate_user_input(
             error_message=f"A pergunta excede o limite máximo de {max_chars} caracteres.",
         )
 
-    # 3. Verificação de padrões maliciosos e injeções
     for regex in REGEX_BLOQUEIOS:
         if regex.search(prompt_limpo):
             return InputGuardResult(

@@ -1,9 +1,4 @@
-"""Serviço de Visualização de Dados (Nó 5 do Pipeline CineData).
-
-Analisa de forma puramente determinística (sem consumo de LLM) os dados tabulares
-extraídos do banco de dados e gera gráficos interativos do Plotly (linhas temporais,
-barras categóricas ou dispersão) adequados para renderização no frontend.
-"""
+"""Serviço de Visualização de Dados determinística com Plotly."""
 
 import re
 from typing import Any
@@ -12,7 +7,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Padrão regex para identificar colunas de data/tempo isoladas por início, fim ou underscore
 PADRAO_TEMPO = re.compile(
     r"(^|_)(ano|year|data|date|release_date|dt|month|mes|day|dia)($|_)",
     re.IGNORECASE,
@@ -31,11 +25,9 @@ def gerar_grafico(
         linhas: Lista de registros (linhas com valores das colunas).
 
     Returns:
-        Instância de plotly.graph_objects.Figure configurada, ou None caso os dados
-        não preencham os critérios mínimos para visualização gráfica.
+        Instância de plotly.graph_objects.Figure configurada, ou None se dados insuficientes.
     """
     try:
-        # 1. Critérios de descarte imediato
         if not colunas or len(colunas) < 2:
             return None
         if not linhas or len(linhas) < 2:
@@ -51,16 +43,12 @@ def gerar_grafico(
 
         total_linhas = len(df)
 
-        # 2. Identificação e coerção de tipos
         for col in colunas:
             col_str = str(col).strip()
-
-            # Tenta coerção numérica
             num_series = pd.to_numeric(df[col], errors="coerce")
             valores_numericos_validos = num_series.notna().sum()
             eh_numerica = valores_numericos_validos >= max(2, int(total_linhas * 0.5))
 
-            # Verifica semântica temporal delimitada
             eh_tempo = bool(PADRAO_TEMPO.search(col_str))
 
             if eh_tempo:
@@ -75,14 +63,11 @@ def gerar_grafico(
             else:
                 colunas_categoricas.append(col)
 
-        # Se nenhuma coluna numérica foi identificada, não é possível gerar gráfico analítico
         if not colunas_numericas:
             return None
 
-        # 3. Seleção do Gráfico
         fig: go.Figure | None = None
 
-        # Cenário A: Categórico + Numérico -> Gráfico de Barras (Prioritário quando há categorias)
         if colunas_categoricas:
             col_x = colunas_categoricas[0]
             col_y = colunas_numericas[0]
@@ -94,7 +79,6 @@ def gerar_grafico(
                     col_y: col_y.replace("_", " ").title(),
                 }
                 if len(df_plot) > LIMITE_BARRAS_TOP:
-                    # Mais de 15 barras: seleciona os top 15 e exibe na horizontal para legibilidade
                     df_plot = df_plot.nlargest(LIMITE_BARRAS_TOP, col_y).sort_values(
                         by=col_y, ascending=True
                     )
@@ -115,13 +99,11 @@ def gerar_grafico(
                         labels=labels,
                     )
 
-        # Cenário B: Temporal + Numérico -> Gráfico de Linhas (Série Temporal Pura sem Categóricas)
         elif colunas_temporais:
             col_x = colunas_temporais[0]
             col_y = colunas_numericas[0]
             df_plot = df.dropna(subset=[col_x, col_y]).sort_values(by=col_x)
 
-            # Agrega registros com datas/anos duplicados para evitar traçados em ziguezague
             if df_plot[col_x].duplicated().any():
                 df_plot = df_plot.groupby(col_x, as_index=False)[col_y].mean()
 
@@ -139,7 +121,6 @@ def gerar_grafico(
                     labels=labels,
                 )
 
-        # Cenário C: Ao menos 2 Numéricos -> Gráfico de Dispersão (Correlação)
         elif len(colunas_numericas) >= 2:
             col_x = colunas_numericas[0]
             col_y = colunas_numericas[1]
@@ -158,7 +139,6 @@ def gerar_grafico(
                     labels=labels,
                 )
 
-        # 4. Estilização do Gráfico
         if fig is not None:
             fig.update_layout(
                 template="plotly_dark",
@@ -171,5 +151,4 @@ def gerar_grafico(
         return fig
 
     except Exception:
-        # Resiliência total: qualquer inconsistência inesperada retorna None de forma segura
         return None

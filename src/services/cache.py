@@ -1,7 +1,6 @@
-"""Serviço de Cache de Consultas e Respostas em Disco (Nó 2 e Nó 6).
+"""Serviço de Cache de Consultas e Respostas em Disco.
 
-Garante custo zero de tokens e resposta instantânea para perguntas repetidas,
-armazenando resultados normalizados em arquivo JSON com persistência atômica.
+Armazena resultados normalizados em arquivo JSON com persistência atômica.
 """
 
 import hashlib
@@ -11,34 +10,27 @@ from typing import Any
 
 from src.config import CACHE_DIR
 
-# Caminho padrão do arquivo de cache em disco
 ARQUIVO_CACHE_PADRAO = CACHE_DIR / "cache_perguntas.json"
 
 
 def normalizar_pergunta(pergunta: str) -> str:
     """Normaliza uma pergunta para geração de chave de cache determinística.
 
-    Converte para minúsculas, unifica múltiplos espaços em branco e remove
-    pontuações periféricas comuns (ex: interrogações, exclamações e pontos).
-
     Args:
         pergunta: Pergunta original enviada pelo usuário.
 
     Returns:
-        String normalizada e limpa.
+        String normalizada em minúsculas e sem pontuações periféricas.
     """
     if not pergunta:
         return ""
 
-    # Unifica múltiplos espaços e quebras de linha em espaço único
     texto = " ".join(pergunta.split()).strip().lower()
-
-    # Remove pontuação periférica
     return texto.strip("?!.,;:-\"'`~ ")
 
 
 def gerar_chave_cache(pergunta: str) -> str:
-    """Gera um hash SHA-256 determinístico a partir da pergunta normalizada.
+    """Gera um hash SHA-256 a partir da pergunta normalizada.
 
     Args:
         pergunta: Pergunta em linguagem natural.
@@ -58,7 +50,6 @@ class CacheConsultas:
 
         Args:
             caminho_arquivo: Caminho personalizado para o arquivo JSON de cache.
-                Se omitido, utiliza o caminho padrão em .cache/cache_perguntas.json.
         """
         self.caminho_arquivo = (
             Path(caminho_arquivo) if caminho_arquivo is not None else ARQUIVO_CACHE_PADRAO
@@ -66,7 +57,7 @@ class CacheConsultas:
         self.caminho_arquivo.parent.mkdir(parents=True, exist_ok=True)
 
     def _carregar_dados(self) -> dict[str, Any]:
-        """Carrega com segurança o dicionário de registros do disco."""
+        """Carrega os registros persistidos do disco."""
         if not self.caminho_arquivo.exists():
             return {}
 
@@ -94,8 +85,7 @@ class CacheConsultas:
             pergunta: Pergunta em linguagem natural.
 
         Returns:
-            Dicionário com os campos 'texto', 'sql', 'colunas' e 'linhas' se houver
-            hit no cache, ou None se for miss.
+            Dicionário com texto, sql, colunas e linhas se houver hit, ou None se miss.
         """
         chave = gerar_chave_cache(pergunta)
         dados = self._carregar_dados()
@@ -125,8 +115,8 @@ class CacheConsultas:
             pergunta: Pergunta em linguagem natural.
             texto: Texto de resposta final retornado pelo agente.
             sql: Consulta SQL executada (se houver).
-            colunas: Lista com o nome das colunas do resultado (se houver).
-            linhas: Registros tabulares retornados pela consulta (se houver).
+            colunas: Lista com o nome das colunas do resultado.
+            linhas: Registros tabulares retornados pela consulta.
         """
         chave = gerar_chave_cache(pergunta)
         dados = self._carregar_dados()
